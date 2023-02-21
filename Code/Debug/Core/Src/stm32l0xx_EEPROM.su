@@ -1,0 +1,2 @@
+../Core/Src/stm32l0xx_EEPROM.c:13:6:eepWriteData	16	static
+../Core/Src/stm32l0xx_EEPROM.c:19:9:eepReadData	0	static

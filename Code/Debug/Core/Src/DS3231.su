@@ -1,0 +1,4 @@
+../Core/Src/DS3231.c:12:6:DS3231_set_time	48	static
+../Core/Src/DS3231.c:24:6:DS3231_get_time	48	static
+../Core/Src/DS3231.c:45:6:DS3231_set_date	48	static
+../Core/Src/DS3231.c:57:6:DS3231_get_date	48	static
