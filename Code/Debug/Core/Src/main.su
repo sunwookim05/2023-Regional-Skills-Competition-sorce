@@ -7,7 +7,7 @@
 ../Core/Src/main.c:298:6:timeSet	40	static
 ../Core/Src/main.c:361:6:mainM	40	static
 ../Core/Src/main.c:413:6:partS	40	static
-../Core/Src/main.c:579:6:pUseM	24	static
+../Core/Src/main.c:579:6:pUseM	32	static
 ../Core/Src/main.c:643:6:use	0	static
 ../Core/Src/main.c:735:6:SystemClock_Config	120	static,ignoring_inline_asm
 ../Core/Src/main.c:653:5:main	64	static,ignoring_inline_asm

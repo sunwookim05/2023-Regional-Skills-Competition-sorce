@@ -641,7 +641,36 @@ MODE pUseM(){
 }
 
 MODE use(){
+	if(fireF){
+		fireF = false;
+		ptInNum = 0;
+	}
+	if(RE1){
+		reC = 0;
+		if(JOY_U && ptInNum < pt[usePos].store) ptInNum++;
+		if(JOY_D && ptInNum > 1) ptInNum--;
+		if(JOY_U || JOY_D) udf = 1;
+	}
+	if(JOY_P){
+		if(!oldsw){
+			swS();
+			fireF = 1;
+			udf = 1;
 
+			logShift();
+			DS3231_get_date(&date.day, &date.month, &date.year);
+			DS3231_get_time(&time.sec, &time.min, &time.hour);
+			pLog[0].workCate = 2;
+			pLog[0].date;
+			pLog[0].time;
+			sprintf(pLog[0].content[0], "%s/%s", pt[usePos].name, ptCate[pt[usePos].cate]);
+			sprintf(pLog[1].content[1], "%dpcs (%d,%d)", ptInNum, tempX, tempY);
+			if(ptInNum == pt[usePos].store){
+
+			}
+		}
+	}
+	return USE;
 }
 
 /* USER CODE END 0 */
