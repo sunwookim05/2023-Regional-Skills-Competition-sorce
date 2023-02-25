@@ -88,6 +88,9 @@ typedef struct PLOG{
 #define PTG pt[i].cate == 1 ? 0 : pt[i].cate == 2 ? 4 : pt[i].cate == 3 ? 4 : 1
 #define PTB pt[i].cate == 1 ? 4 : pt[i].cate == 2 ? 0 : pt[i].cate == 3 ? 4 : 0
 #define PTMAX pt[ptC].cate == 0 ? 200 : pt[ptC].cate == 1 ? 100 : pt[ptC].cate == 2 ? 50 : 10
+#define PTRF pt[findArr[sel]].cate == 1 ? 1 : pt[findArr[sel]].cate == 2 ? 4 : pt[findArr[sel]].cate == 3 ? 0 : 4
+#define PTGF pt[findArr[sel]].cate == 1 ? 0 : pt[findArr[sel]].cate == 2 ? 4 : pt[findArr[sel]].cate == 3 ? 4 : 1
+#define PTBF pt[findArr[sel]].cate == 1 ? 4 : pt[findArr[sel]].cate == 2 ? 0 : pt[findArr[sel]].cate == 3 ? 4 : 0
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -111,8 +114,9 @@ TIME time;
 PART pt[36];
 PART ptRst;
 PTLOG pLog[6];
+MODE modeFlag = MAIN;
 
-volatile uint8_t reC = 0;
+uint8_t reC = 0;
 uint8_t lastDay[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 uint8_t sel;
 uint8_t buzFlag = 0;
@@ -123,9 +127,13 @@ uint8_t ptSetPosF = 0;
 uint8_t ptInNum;
 uint8_t logC=0;
 uint8_t usePos = 255;
+uint8_t findArr[36];
+uint8_t findC = 0;
 uint16_t adc[2];
+uint16_t ledC = 0;
 boolean oldsw = true;
 boolean udf = true, fireF = true;
+String ptFindName;
 String ptCate[4] = {"Res", "Cap", "IC", "Etc"};
 String keyboard[4] = {
 		"1234567890",
@@ -170,6 +178,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM2) {
 		reC++;
 
+		if(modeFlag == FINDR || modeFlag == PARTITION) ledC++;
+		else ledC = 0;
+
 		HAL_ADC_Start(&hadc);
 		HAL_ADC_PollForConversion(&hadc, 10);
 		adc[0] = HAL_ADC_GetValue(&hadc);
@@ -213,22 +224,18 @@ String textIn(boolean n, uint8_t lim){
 	while(1){
 		if(RE1){
 			reC = 0;
-			if(JOY_R){
+			if(JOY_R)
 				if(keyX < limX) keyX++;
 				else keyX = 0;
-			}
-			if(JOY_L){
+			if(JOY_L)
 				if(keyX) keyX--;
 				else keyX = limX;
-			}
-			if(JOY_U){
+			if(JOY_U)
 				if(keyY) keyY--;
 				else keyY = 3;
-			}
-			if(JOY_D){
+			if(JOY_D)
 				if(keyY < 3) keyY++;
 				else keyY = 0;
-			}
 			if(JOY_R || JOY_L || JOY_U || JOY_D) udf = true;
 		}
 		if(JOY_P){
@@ -240,10 +247,8 @@ String textIn(boolean n, uint8_t lim){
 					if(keyY == 0) cur--;
 					else if(keyY == 2){
 						udf = true;
-
 						resultArr[cur] = '\0';
 						SSD1306_Fill(1);
-
 						free(bf);
 						return resultArr;
 					}
@@ -566,9 +571,7 @@ MODE partS(){
 
 		SSD1306_PutsXY(1, 7, "Enter", 1);
 
-		for(uint8_t i = 0; i < 5; i++)
-			if(i == sel) SSD1306_PutsXY(0, i + 3, ">", 1);
-			else SSD1306_PutsXY(0, i + 3, " ", 1);
+		for(uint8_t i = 0; i < 5; i++) SSD1306_PutsXY(0, i + 3, i == sel ? ">" : " ", 1);
 
 		free(bf);
 		SSD1306_UpdateScreen();
@@ -613,11 +616,11 @@ MODE pUseM(){
 				String bf = (String)calloc(0, sizeof(char) * 4);
 				usePos = i;
 				SSD1306_PutsXY(1, 3, "Cate:", 1);
-				SSD1306_Puts(ptCate[pt[ptC].cate], &Font_6x8, 1);
+				SSD1306_Puts(ptCate[pt[usePos].cate], &Font_6x8, 1);
 				SSD1306_PutsXY(1, 4, "Name:", 1);
-				SSD1306_Puts(pt[i].name, &Font_6x8, 1);
+				SSD1306_Puts(pt[usePos].name, &Font_6x8, 1);
 				SSD1306_PutsXY(1, 5, "Store:", 1);
-				sprintf(bf, "%d ", pt[i].store);
+				sprintf(bf, "%d ", pt[usePos].store);
 				SSD1306_Puts(bf, &Font_6x8, 1);
 				free(bf);
 				break;
@@ -658,19 +661,173 @@ MODE use(){
 			udf = 1;
 
 			logShift();
-			DS3231_get_date(&date.day, &date.month, &date.year);
+			DS3231_get_date(&date.day, &date.month, (uint8_t*)&date.year);
 			DS3231_get_time(&time.sec, &time.min, &time.hour);
 			pLog[0].workCate = 2;
-			pLog[0].date;
-			pLog[0].time;
+			pLog[0].date = date;
+			pLog[0].time = time ;
 			sprintf(pLog[0].content[0], "%s/%s", pt[usePos].name, ptCate[pt[usePos].cate]);
-			sprintf(pLog[1].content[1], "%dpcs (%d,%d)", ptInNum, tempX, tempY);
-			if(ptInNum == pt[usePos].store){
-
+			sprintf(pLog[0].content[1], "%dpcs (%d,%d)", ptInNum, tempX, tempY);
+			if(ptInNum == pt[usePos].store) return REFILL;
+			else {
+				pt[usePos].store -= ptInNum;
+				return MAIN;
 			}
 		}
 	}
+	if(udf){
+		String bf = (String)calloc(0, sizeof(char) * 12);
+		udf = false;
+		basicScreen();
+		SSD1306_PutsXY(0, 0, "#Use", 0);
+		SSD1306_PutsXY(0, 1, "How Many use?", 1);
+		sprintf(bf, "(%d / %d)", ptInNum, pt[usePos].store);
+		SSD1306_PutsXY(0, 3, bf, 1);
+		SSD1306_UpdateScreen();
+		free(bf);
+	}
 	return USE;
+}
+
+MODE refill(){
+	if(fireF){
+		fireF = false;
+		ptInNum = 0;
+	}
+	if(RE1){
+		reC = 0;
+		if(JOY_U && ptInNum < pt[usePos].max){
+			ptInNum++;
+			udf = true;
+		}
+		if(JOY_D && ptInNum){
+			ptInNum--;
+			udf = true;
+		}
+	}
+	if(JOY_P){
+		if(!oldsw){
+			swS();
+			fireF = true;
+			udf = true;
+			if(ptInNum){
+				logShift();
+				DS3231_get_date(&date.day, &date.month, (uint8_t*)&date.year);
+				DS3231_get_time(&time.sec, &time.min, &time.hour);
+				pLog[0].workCate = 1;
+				pLog[0].date = date;
+				pLog[0].time = time;
+				sprintf(pLog[0].content[0], "%s/%s", pt[usePos].name, ptCate[pt[usePos].cate]);
+				sprintf(pLog[0].content[1], "%dpcs (%d,%d)", ptInNum, tempX, tempY);
+			}
+			pt[usePos].store = ptInNum;
+			for(uint8_t i = 0; i < 36; i++){
+				if(pt[usePos].ptionID == pt[i].ptionID && pt[usePos].ptionID) pt[i] = pt[usePos];
+				if(!pt[i].store) pt[i] = ptRst;
+			}
+			led_clear();
+
+			return MAIN;
+		}
+	}
+	if(udf){
+		String bf = (String)calloc(0, sizeof(char) * 11);
+		udf = false;
+		basicScreen();
+		SSD1306_PutsXY(0, 0, "#refill", 0);
+		SSD1306_PutsXY(0, 1, "Part has all used.", 1);
+		if(pt[usePos].ptionC < 1)pt[usePos].ptionC = 1;
+		sprintf(bf, "IN:%u/%u", ptInNum, pt[usePos].max * pt[usePos].ptionC);
+		SSD1306_PutsXY(0, 3, bf, 1);
+		SSD1306_UpdateScreen();
+		free(bf);
+	}
+	return REFILL;
+}
+
+MODE pFind(){
+	if(fireF) fireF = false;
+	if(JOY_P){
+		if(!oldsw){
+			swS();
+			if(!ptFindName[0]) ptFindName = textIn(true, 10);
+			else{
+				for(uint8_t i = 0; i < 36; i++)
+					if(!strcmp(ptFindName, pt[i].name))
+						findArr[findC++] = i;
+				fireF = true;
+				udf = true;
+
+				return FINDR;
+			}
+		}
+	}
+	if(udf){
+		udf = false;
+		basicScreen();
+		SSD1306_PutsXY(0, 0, "#Find", 0);
+		SSD1306_DrawFilledRectangle(18, 34, 92, 10, 1);
+		SSD1306_GotoXY(19, 36);
+		if(!ptFindName[0]) SSD1306_Puts("input find name", &Font_6x8, 1);
+		else SSD1306_Puts(ptFindName, &Font_6x8, 1);
+		SSD1306_UpdateScreen();
+	}
+	return PFIND;
+}
+
+MODE findR(){
+	if(fireF) fireF = false;
+	if(ledC >= 1000) ledC = 0;
+	if(ledC < 500)
+		for(uint8_t i = 0; i < 36; i++)
+			led_color(pt[findArr[i]].pos, PTRF, PTGF, PTBF);
+	else led_color(pt[findArr[sel]].pos, 0, 0, 0);
+	if(reC >= 250){
+		reC = 0;
+		led_update();
+		if(JOY_U && sel)sel--;
+		if(JOY_D && sel < (findC - 1)) sel++;
+	}
+	if(JOY_P){
+		if(!oldsw){
+			swS();
+			logShift();
+			DS3231_get_date(&date.day, &date.month, &date.year);
+			DS3231_get_time(&time.sec, &time.min, &time.hour);
+			pLog[0].workCate = 3;
+			pLog[0].date = date;
+			pLog[0].time = time;
+			sprintf(pLog[0].content[0], "Sear:%s", ptFindName);
+			sprintf(pLog[0].content[0], "Num of Find:%u", findC);
+			if(findC){
+				usePos = findArr[sel];
+				return USE;
+			}else return MAIN;
+		}
+		findC = 0;
+		memset(ptFindName, 0, sizeof(ptFindName));
+		udf = true;
+		fireF = true;
+	}
+	if(udf){
+		udf = false;
+		basicScreen();
+		SSD1306_PutsXY(0, 0, "#Find result", 0);
+		if(findC){
+			String bf = (String)calloc(0, sizeof(char) * 31);
+			for(uint8_t i = 0; i < 4; i++) SSD1306_PutsXY(0, i + 2, i == sel ? ">" : " ", 1);
+			SSD1306_PutsXY(0, 1, "Find some Parts!", 1);
+			for(uint8_t i = 0; i < findC; i++){
+				tempX = (pt[findArr[i]].pos) % 6 + 1;
+				tempY = 6 - (pt[findArr[i]].pos) / 6;
+				sprintf(bf, "%s(%s/%d,%d)", pt[findArr[i]].name, ptCate[pt[findArr[i]].cate], tempX, tempY);
+				SSD1306_PutsXY(1, i + 2, bf, 1);
+			}
+			free(bf);
+		}else SSD1306_PutsXY(0, 1, "Not Found..", 1);
+		SSD1306_UpdateScreen();
+	}
+	return FINDR;
 }
 
 /* USER CODE END 0 */
@@ -681,7 +838,6 @@ MODE use(){
  */
 int main(void) {
 	/* USER CODE BEGIN 1 */
-	MODE modeFlag = MAIN;
 	static boolean firstOn  = false;
 	/* USER CODE END 1 */
 
@@ -718,10 +874,10 @@ int main(void) {
 
 	pLog[0].content[0] = (String)calloc(0, sizeof(char) * 22);
 	pLog[0].content[1] = (String)calloc(0, sizeof(char) * 22);
+	ptFindName = (String)calloc(0, sizeof(char) * 11);
 
-	for (uint8_t i = 0; i < 36; i++){
+	for (uint8_t i = 0; i < 36; i++)
 		led_color(i, i / 6 == 0 || i / 6 == 3 ? 4 : 0, i / 6 == 1 || i / 6 == 4 ? 4 : 0, i / 6 == 2 || i / 6 == 5 ? 4 : 0);
-	}
 	led_update();
 
 	for (uint8_t i = 0; i < 8; i++) {
@@ -751,6 +907,9 @@ int main(void) {
 		else if(modeFlag == PSAVE) modeFlag = partS();
 		else if(modeFlag == PUSE) modeFlag = pUseM();
 		else if(modeFlag == USE) modeFlag = use();
+		else if(modeFlag == REFILL) modeFlag = refill();
+		else if(modeFlag == PFIND) modeFlag = pFind();
+		else if(modeFlag == FINDR) modeFlag = findR();
 		/* USER CODE END WHILE */
 		/* USER CODE BEGIN 3 */
 	}
