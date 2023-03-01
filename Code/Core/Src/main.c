@@ -32,9 +32,10 @@
 /* USER CODE BEGIN PTD */
 typedef uint8_t boolean;
 typedef char *String;
-typedef enum MODE{
+typedef uint8_t MODE;
+typedef enum __MODE__{
 	MAIN, PSAVE, PUSE, USE, REFILL, PFIND, FINDR, PARTITION, PLOG, LOGD
-}MODE;
+}__MODE__;
 
 typedef struct TIME {
 	uint8_t hour;
@@ -49,7 +50,7 @@ typedef struct DATE {
 } DATE;
 
 typedef struct PART{
-	String name;
+	volatile String name;
 	uint8_t cate;
 	uint8_t partF;
 	uint8_t pos;
@@ -71,6 +72,9 @@ typedef struct PLOG{
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define true 1
+#define false 0
+
 #define BUZ(x) (HAL_GPIO_WritePin(BUZ_GPIO_Port, BUZ_Pin, x))
 #define ADC_JOY_X (adc[1])
 #define ADC_JOY_Y (adc[0])
@@ -82,8 +86,6 @@ typedef struct PLOG{
 #define RE1 (reC>=100)
 
 #define UPDATE SSD1306_UpdateScreen(); led_update()
-#define true 1
-#define false 0
 #define PTR pt[i].cate == 1 ? 1 : pt[i].cate == 2 ? 4 : pt[i].cate == 3 ? 0 : 4
 #define PTG pt[i].cate == 1 ? 0 : pt[i].cate == 2 ? 4 : pt[i].cate == 3 ? 4 : 1
 #define PTB pt[i].cate == 1 ? 4 : pt[i].cate == 2 ? 0 : pt[i].cate == 3 ? 4 : 0
@@ -112,7 +114,6 @@ TIM_HandleTypeDef htim2;
 DATE date;
 TIME time;
 PART pt[36];
-PART ptRst;
 PTLOG pLog[6];
 MODE modeFlag = MAIN;
 
@@ -129,10 +130,11 @@ uint8_t logC=0;
 uint8_t usePos = 255;
 uint8_t findArr[36];
 uint8_t findC = 0;
+uint8_t selLog = 0;
 uint16_t adc[2];
 uint16_t ledC = 0;
 boolean oldsw = true;
-boolean udf = true, fireF = true;
+boolean udf = true, firstF = true;
 String ptFindName;
 String ptCate[4] = {"Res", "Cap", "IC", "Etc"};
 String keyboard[4] = {
@@ -213,8 +215,8 @@ void logShift(){
 }
 
 String textIn(boolean n, uint8_t lim){
-	String bf = (String)calloc(0, sizeof(char) * 30);
-	String resultArr = (String)calloc(0, sizeof(char) * 11);
+	String bf = (String)calloc(0, sizeof(char) * 12);
+	volatile String resultArr = (String)calloc(0, sizeof(char) * 11);
 	uint8_t keyX = 0, keyY = 0, limX = 0, tempColor;
 	uint8_t cur = 0;
 	udf = true;
@@ -256,7 +258,7 @@ String textIn(boolean n, uint8_t lim){
 			}
 		}
 		if(lim - 1 == cur){
-			fireF = 1;
+			firstF = true;
 			udf = true;
 
 			resultArr[cur]='\0';
@@ -282,12 +284,10 @@ String textIn(boolean n, uint8_t lim){
 					SSD1306_Putc(keyboard[j][i], &Font_6x8, tempColor);
 				}
 			}
-
 			SSD1306_GotoXY(115, 31);
 			SSD1306_Puts("&", &Font_6x8, !(keyX == 10 && keyY == 0));
 			SSD1306_GotoXY(115, 49);
 			SSD1306_Puts("*", &Font_6x8, !(keyX == 10 && keyY == 2));
-
 			SSD1306_PutsXY(cur, 2, " ^ ", 1);
 			SSD1306_PutsXY(0, 1, " > ", 1);
 			for(uint8_t i = 0; i < cur; i++){
@@ -308,26 +308,24 @@ void timeSet(boolean firstOn){
 	while(!firstOn){
 		if(RE1){
 			reC = 0;
-			if(JOY_R)
-				if(sel < 5) sel++;
-			if(JOY_L)
-				if(sel) sel--;
+			if(JOY_R && sel < 5) sel++;
+			if(JOY_L && sel) sel--;
 			if(JOY_U){
 				if(sel == 0) if(setDate.year < 2099) setDate.year++;
-				if(sel == 1) if(setDate.month < 12) setDate.month++;
-				if(sel == 2) if(setDate.day < lastDay[setDate.month - 1]) setDate.day++;
-				if(sel == 3) if(setTime.hour < 23) setTime.hour++;
-				if(sel == 4) if(setTime.min < 59) setTime.min++;
-				if(sel == 5) if(setTime.sec < 59) setTime.sec++;
-				if(setDate.day > lastDay[setDate.month - 1]) setDate.day = lastDay[setDate.month - 1];
+				else if(sel == 1) if(setDate.month < 12) setDate.month++;
+				else if(sel == 2) if(setDate.day < lastDay[setDate.month - 1]) setDate.day++;
+				else if(sel == 3) if(setTime.hour < 23) setTime.hour++;
+				else if(sel == 4) if(setTime.min < 59) setTime.min++;
+				else if(sel == 5) if(setTime.sec < 59) setTime.sec++;
+				else if(setDate.day > lastDay[setDate.month - 1]) setDate.day = lastDay[setDate.month - 1];
 			}
 			if(JOY_D){
 				if(sel == 0) if(setDate.year > 2000) setDate.year--;
-				if(sel == 1) if(setDate.month > 1) setDate.month--;
-				if(sel == 2) if(setDate.day > 1) setDate.day--;
-				if(sel == 3) if(setTime.hour) setTime.hour--;
-				if(sel == 4) if(setTime.min) setTime.min--;
-				if(sel == 5) if(setTime.sec) setTime.sec--;
+				else if(sel == 1) if(setDate.month > 1) setDate.month--;
+				else if(sel == 2) if(setDate.day > 1) setDate.day--;
+				else if(sel == 3) if(setTime.hour) setTime.hour--;
+				else if(sel == 4) if(setTime.min) setTime.min--;
+				else if(sel == 5) if(setTime.sec) setTime.sec--;
 			}
 			if(JOY_R || JOY_L || JOY_U || JOY_D) udf = true;
 			if(JOY_P){
@@ -364,8 +362,8 @@ void timeSet(boolean firstOn){
 }
 
 MODE mainM(){
-	if(fireF){
-		fireF = false;
+	if(firstF){
+		firstF = false;
 		basicScreen();
 		for(uint8_t i = 0; i < 36; i++)
 			if(pt[i].store) led_color(pt[i].pos, PTR, PTG, PTB);
@@ -395,8 +393,8 @@ MODE mainM(){
 			swS();
 			if(ptC || !sel){
 				udf = true;
-				fireF = true;
-				return sel == 0 ? PSAVE : sel == 1 ? PUSE : sel == 2 ? PFIND : sel == 4 ? PARTITION : PLOG;
+				firstF = true;
+				return sel == 0 ? PSAVE : sel == 1 ? PUSE : sel == 2 ? PFIND : sel == 3 ? PARTITION : PLOG;
 			}else buzFlag = 1;
 		}
 	}
@@ -416,8 +414,8 @@ MODE mainM(){
 }
 
 MODE partS(){
-	if(fireF){
-		fireF = false;
+	if(firstF){
+		firstF = false;
 
 		sel = 0;
 		tempX = 1;
@@ -513,7 +511,7 @@ MODE partS(){
 				if(!pt[ptC].name) buzFlag = 2;
 				else if(sel == 4){
 					udf = true;
-					fireF = 1;
+					firstF = 1;
 
 					pt[ptC].pos = ledPos;
 					pt[ptC].store = ptInNum;
@@ -524,8 +522,8 @@ MODE partS(){
 					pLog[0].workCate = 1;
 					pLog[0].date = date;
 					pLog[0].time = time;
-					sprintf(pLog[0].content[0], "%s %s", pt[ptC].name, ptCate[pt[ptC].cate]);
-					sprintf(pLog[0].content[1], "%dpcs (%d %d)", pt[ptC].store, tempX, tempY);
+					sprintf(pLog[0].content[0], "%s/%s", pt[ptC].name, ptCate[pt[ptC].cate]);
+					sprintf(pLog[0].content[1], "%dpcs (%d,%d)", pt[ptC].store, tempX, tempY);
 					ptC++;
 
 					sel = 0;
@@ -571,7 +569,7 @@ MODE partS(){
 
 		SSD1306_PutsXY(1, 7, "Enter", 1);
 
-		for(uint8_t i = 0; i < 5; i++) SSD1306_PutsXY(0, i + 3, i == sel ? ">" : " ", 1);
+		SSD1306_PutsXY(0, sel + 3, ">", 1);
 
 		free(bf);
 		SSD1306_UpdateScreen();
@@ -580,8 +578,8 @@ MODE partS(){
 }
 
 MODE pUseM(){
-	if(fireF){
-		fireF = false;
+	if(firstF){
+		firstF = false;
 		tempX = 1;
 		tempY = 1;
 	}
@@ -597,7 +595,7 @@ MODE pUseM(){
 		if(!oldsw){
 			swS();
 			if(usePos != 255){
-				fireF = true;
+				firstF = true;
 				udf = true;
 				return USE;
 			}else buzFlag = 2;
@@ -644,8 +642,8 @@ MODE pUseM(){
 }
 
 MODE use(){
-	if(fireF){
-		fireF = false;
+	if(firstF){
+		firstF = false;
 		ptInNum = 0;
 	}
 	if(RE1){
@@ -657,7 +655,7 @@ MODE use(){
 	if(JOY_P){
 		if(!oldsw){
 			swS();
-			fireF = 1;
+			firstF = 1;
 			udf = 1;
 
 			logShift();
@@ -690,8 +688,8 @@ MODE use(){
 }
 
 MODE refill(){
-	if(fireF){
-		fireF = false;
+	if(firstF){
+		firstF = false;
 		ptInNum = 0;
 	}
 	if(RE1){
@@ -708,7 +706,7 @@ MODE refill(){
 	if(JOY_P){
 		if(!oldsw){
 			swS();
-			fireF = true;
+			firstF = true;
 			udf = true;
 			if(ptInNum){
 				logShift();
@@ -723,7 +721,6 @@ MODE refill(){
 			pt[usePos].store = ptInNum;
 			for(uint8_t i = 0; i < 36; i++){
 				if(pt[usePos].ptionID == pt[i].ptionID && pt[usePos].ptionID) pt[i] = pt[usePos];
-				if(!pt[i].store) pt[i] = ptRst;
 			}
 			led_clear();
 
@@ -746,7 +743,11 @@ MODE refill(){
 }
 
 MODE pFind(){
-	if(fireF) fireF = false;
+	if(firstF){
+		firstF = false;
+		findC = 0;
+	}
+	if(RE1 && (JOY_R || JOY_L || JOY_U || JOY_D)) udf = true;
 	if(JOY_P){
 		if(!oldsw){
 			swS();
@@ -755,9 +756,8 @@ MODE pFind(){
 				for(uint8_t i = 0; i < 36; i++)
 					if(!strcmp(ptFindName, pt[i].name))
 						findArr[findC++] = i;
-				fireF = true;
+				firstF = true;
 				udf = true;
-
 				return FINDR;
 			}
 		}
@@ -776,7 +776,7 @@ MODE pFind(){
 }
 
 MODE findR(){
-	if(fireF) fireF = false;
+	if(firstF) firstF = false;
 	if(ledC >= 1000) ledC = 0;
 	if(ledC < 500)
 		for(uint8_t i = 0; i < 36; i++)
@@ -792,7 +792,7 @@ MODE findR(){
 		if(!oldsw){
 			swS();
 			logShift();
-			DS3231_get_date(&date.day, &date.month, &date.year);
+			DS3231_get_date(&date.day, &date.month, (uint8_t *)&date.year);
 			DS3231_get_time(&time.sec, &time.min, &time.hour);
 			pLog[0].workCate = 3;
 			pLog[0].date = date;
@@ -802,12 +802,15 @@ MODE findR(){
 			if(findC){
 				usePos = findArr[sel];
 				return USE;
-			}else return MAIN;
+			}else {
+				udf = true;
+				return MAIN;
+			}
 		}
 		findC = 0;
-		memset(ptFindName, 0, sizeof(ptFindName));
+		memset(ptFindName, 0, (size_t)sizeof(ptFindName));
 		udf = true;
-		fireF = true;
+		firstF = true;
 	}
 	if(udf){
 		udf = false;
@@ -815,7 +818,7 @@ MODE findR(){
 		SSD1306_PutsXY(0, 0, "#Find result", 0);
 		if(findC){
 			String bf = (String)calloc(0, sizeof(char) * 31);
-			for(uint8_t i = 0; i < 4; i++) SSD1306_PutsXY(0, i + 2, i == sel ? ">" : " ", 1);
+			SSD1306_PutsXY(0, sel + 2, ">", 1);
 			SSD1306_PutsXY(0, 1, "Find some Parts!", 1);
 			for(uint8_t i = 0; i < findC; i++){
 				tempX = (pt[findArr[i]].pos) % 6 + 1;
@@ -828,6 +831,225 @@ MODE findR(){
 		SSD1306_UpdateScreen();
 	}
 	return FINDR;
+}
+
+MODE partition(){
+	static uint8_t minX = 0, minY = 0;
+	static uint8_t maxX = 0, maxY = 0;
+	static uint8_t ptiSX = 1, ptiEX = 1;
+	static uint8_t ptiSY = 1, ptiEY = 1;
+	static uint8_t selPtpos = 0;
+	static uint8_t tempPtiC= 0;
+	static uint8_t ptiC = 0;
+	if(firstF){
+		firstF = false;
+		sel = 0;
+		ptiSX = 1;
+		ptiSY = 1;
+		ptiEX = 1;
+		ptiEY = 1;
+		selPtpos = 0;
+		tempPtiC = 0;
+		led_clear();
+		led_update();
+	}
+	if(RE1){
+		reC = 0;
+		led_clear();
+		if(JOY_R){
+			if(ptiSX < 6 && sel == 0) ptiSX++;
+			if(ptiEX < 6 && sel == 1) ptiEX++;
+		}
+		if(JOY_L){
+			if(ptiSX > 1 && sel == 0) ptiSX--;
+			if(ptiEX > 1 && sel == 1) ptiEX--;
+		}
+		if(JOY_U){
+			if(ptiSY < 6 && sel == 0) ptiSY++;
+			if(ptiEY < 6 && sel == 1) ptiEY++;
+		}
+		if(JOY_D){
+			if(ptiSY > 1 && sel == 0) ptiSY--;
+			if(ptiEY > 1 && sel == 1) ptiEY--;
+		}
+		if(JOY_U || JOY_D || JOY_R || JOY_L) udf = true;
+		if(sel == 0) ledPos = (6 - ptiSY) * 6 + ptiSX - 1;
+		if(sel == 1) ledPos = (6 - ptiEY) * 6 + ptiEX - 1;
+		if(sel <= 1){
+			for(uint8_t i = 0; i < 36; i++) if(!pt[i].cate) led_color(pt[i].pos, PTR, PTG, PTB);
+			led_update();
+		}
+		if(sel == 2){
+			if(ledC >= 1000) ledC = 0;
+			if(led < 500){
+				for(uint8_t i = 0; i < 36; i++){
+					tempX = i % 6 + 1;
+					tempY = 6 - i / 6;
+					if((tempX >= minX && trmpX <= maxX) && (tempY >= minY && tempY <= maxY))
+						led_color(i, 0, 4, 0);
+
+				}
+			}else led_clear();
+			led_update();
+		}
+	}
+	if(JOY_P){
+		if(!oldsw){
+			swS();
+			udf = true;
+			if(sel < 3) sel++;
+			if(sel == 1){
+				ptiEX = ptiSX;
+				ptiEY = ptiSY;
+			}
+			if(sel == 2){
+				maxX = ptiSX >= ptiSX ? ptiSX : ptiEX;
+				maxY = ptiSY >= ptiEY ? ptiSY : ptiEY;
+				minX = ptiSX >= ptiEX ? ptiSX : ptiSX;
+				minY = ptiSY >= ptiEY ? ptiEY : ptiSY;
+				for(uint8_t i = 0; i < 36; i++){
+					tempX = i % 6 + 1;
+					tempY = 6 - i / 6;
+					if((tempX >= minX && tempX <= maxX) && (tempY >= minY && tempY <= maxY))
+						tempPtiC++;
+				}
+			}
+		}
+	}
+	if(sel == 3){
+		ptiC++;
+		pt[selPtpos].ptionID = ptiC;
+		pt[selPtpos].ptionC = tempPtiC;
+		for(uint8_t i = 0; i < 36; i++){
+			tempX = i % 6 + 1;
+			tempY = 6 - i / 6;
+			if((tempX >= minX && tempX <= maxX) && (tempY >= minY && tempY <= maxY)){
+				if(!pt[ptC].store){
+					pt[ptC] = pt[selPtpos];
+					pt[ptC++].pos = i;
+				}else ptC++;
+			}
+		}
+		logShift();
+		DS3231_get_date(&date.day, &date.month, (uint8_t*)&date.year);
+		DS3231_get_time(&time.sec, &time.min, &time.hour);
+		sprintf(pLog[0].content[0], "S(%d,%d) E(%d,%d)", ptiSX, ptiSY, ptiEX, ptiEY);
+		sprintf(pLog[0].content[1], "Size of ption:%d", tempPtiC);
+		pLog[0].workCate = 4;
+		pLog[0].time = time;
+		pLog[0].date = date;
+
+		sel = 0;
+		firstF = true;
+		udf = true;
+
+		return MAIN;
+	}
+	if(udf){
+		String bf = (String)calloc(0, sizeof(char) * 30);
+		udf = false;
+		led_update();
+		basicScreen();
+		SSD1306_PutsXY(0, 0, "#Partition", 0);
+		sprintf(bf, "Start (%d,%d)", ptiSX, ptiSY);
+		SSD1306_PutsXY(0, 3, bf, 1);
+		for(uint8_t i = 0; i < 36; i++){
+			if(pt[i].store && pt[i].pos == ledPos){
+				if(pt[i].ptionC < 1) pt[i].ptionC = 1;
+				sprintf(bf, "%s(%s/%d/%d)", pt[i].name, ptCate[pt[i].cate], pt[i].store, pt[i].max * pt[i].ptionC);
+				SSD1306_PutsXY(0, 4, bf, 1);
+			}else {
+				SSD1306_PutsXY(0, 4, "(NONE)", 1);
+			}
+		}
+		if(sel == 1){
+			SSD1306_PutsXY(0, 1, "Select end point", 1);
+			sprintf(bf, "End (%d,%d)", ptiEX, ptiEY);
+			SSD1306_PutsXY(0, 3, bf, 1);
+			for(uint8_t i = 0; i < 36; i++){
+				if(pt[i].store && pt[i].pos == ledPos){
+					sprintf(bf, "%s(%s/%d/%d)", pt[i].name, ptCate[pt[i].cate], ptiEX, ptiEY);
+					SSD1306_PutsXY(0, 4, bf, 1);
+				}else {
+					SSD1306_PutsXY(0, 4, "(NONE)", 1);
+				}
+			}
+		}
+		if(sel == 2){
+			sprintf(bf, "Total number:%d", tempPtiC);
+			SSD1306_PutsXY(0, 3, bf, 1);
+		}
+		SSD1306_UpdateScreen();
+		free(bf);
+	}
+	return PARTITION;
+}
+
+MODE logM(){
+	if(firstF){
+		firstF = false;
+		sel = 0;
+	}
+	if(RE1){
+		reC = 0;
+		if(JOY_L){
+			firstF = true;
+			udf = true;
+			return MAIN;
+		}
+		if(JOY_U && sel) sel--;
+		if(JOY_D && (sel < ((logC > 6) ? 5 : logC - 1))) sel++;
+		if(JOY_U || JOY_D) udf = true;
+	}
+	if(JOY_P){
+		if(!oldsw){
+			swS();
+			firstF = true;
+			udf = true;
+			selLog = sel;
+			return LOGD;
+		}
+	}
+	if(udf){
+		udf = false;
+		basicScreen();
+		SSD1306_PutsXY(0, 0, "#Log", 0);
+		for(uint8_t i = 0; i < ((logC > 6) ? 6 : logC); i++){
+			if(pLog[i].date.year){
+				String bf = (String)calloc(0, sizeof(char) * 30);
+				sprintf(bf, "%02d.%02d.%02d/%02d:%02d/%s", pLog[i].date.year, pLog[i].date.month, pLog[i].date.day, pLog[i].time.hour, pLog[i].time.min, ptCate[pLog[i].workCate]);
+				SSD1306_PutsXY(1, i + 2, bf, 1);
+				free(bf);
+			}else break;
+		}
+		SSD1306_PutsXY(0, sel + 2, ">", 1);
+		SSD1306_UpdateScreen();
+	}
+	return PLOG;
+}
+
+MODE logD(){
+	if(firstF) firstF = false;
+	if(JOY_P){
+		if(!oldsw){
+			swS();
+			udf = true;
+			return PLOG;
+		}
+	}
+	if(udf){
+		String bf = (String)calloc(0, sizeof(char) * 30);
+		udf = false;
+		basicScreen();
+		SSD1306_PutsXY(0, 0, "#Log detail", 0);
+		sprintf(bf, "%02d.%02d.%02d/%02d:%02d/%s", pLog[selLog].date.year, pLog[selLog].date.month, pLog[selLog].date.day, pLog[selLog].time.hour, pLog[selLog].time.min, ptCate[pLog[selLog].workCate]);
+		SSD1306_PutsXY(0, 2, bf, 1);
+		SSD1306_PutsXY(0, 4, pLog[selLog].content[0], 1);
+		SSD1306_PutsXY(0, 5, pLog[selLog].content[1], 1);
+		free(bf);
+		SSD1306_UpdateScreen();
+	}
+	return LOGD;
 }
 
 /* USER CODE END 0 */
@@ -874,12 +1096,10 @@ int main(void) {
 
 	pLog[0].content[0] = (String)calloc(0, sizeof(char) * 22);
 	pLog[0].content[1] = (String)calloc(0, sizeof(char) * 22);
-	ptFindName = (String)calloc(0, sizeof(char) * 11);
-
+	memset(pLog, 0, (size_t)sizeof(pLog));
 	for (uint8_t i = 0; i < 36; i++)
 		led_color(i, i / 6 == 0 || i / 6 == 3 ? 4 : 0, i / 6 == 1 || i / 6 == 4 ? 4 : 0, i / 6 == 2 || i / 6 == 5 ? 4 : 0);
 	led_update();
-
 	for (uint8_t i = 0; i < 8; i++) {
 		SSD1306_Fill(0);
 		SSD1306_GotoXY(46, 28 + i);
@@ -910,6 +1130,9 @@ int main(void) {
 		else if(modeFlag == REFILL) modeFlag = refill();
 		else if(modeFlag == PFIND) modeFlag = pFind();
 		else if(modeFlag == FINDR) modeFlag = findR();
+		else if(modeFlag == PARTITION) modeFlag = partition();
+		else if(modeFlag == PLOG) modeFlag = logM();
+		else if(modeFlag == LOGD) modeFlag = logD();
 		/* USER CODE END WHILE */
 		/* USER CODE BEGIN 3 */
 	}
