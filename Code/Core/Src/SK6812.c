@@ -66,7 +66,7 @@ void led_update(){
 	HAL_SPI_Transmit_DMA(&hspi1, (uint8_t*)spiBf, 436);
 }
 void led_clear(){
-	memset(ledData,0,sizeof(ledData));
+	memset(ledData, 0, (size_t)sizeof(ledData));
 	//	led_update();
 }
 uint8_t led_cmp(uint8_t id, uint8_t r, uint8_t g, uint8_t b){
