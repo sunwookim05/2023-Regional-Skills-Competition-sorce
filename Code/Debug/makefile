@@ -60,8 +60,8 @@ all: main-build
 main-build: PARTS_DRAWER.elf secondary-outputs
 
 # Tool invocations
-PARTS_DRAWER.elf PARTS_DRAWER.map: $(OBJS) $(USER_OBJS) C:\Users\Admin\Documents\Github_Commit\2023-Regional-Skills-Competition-sorce\Code\STM32L052K6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "PARTS_DRAWER.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0plus -T"C:\Users\Admin\Documents\Github_Commit\2023-Regional-Skills-Competition-sorce\Code\STM32L052K6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="PARTS_DRAWER.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+PARTS_DRAWER.elf PARTS_DRAWER.map: $(OBJS) $(USER_OBJS) C:\Users\PC\Documents\GitHub_Commit\2023-Regional-Skills-Competition-sorce\Code\STM32L052K6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "PARTS_DRAWER.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0plus -T"C:\Users\PC\Documents\GitHub_Commit\2023-Regional-Skills-Competition-sorce\Code\STM32L052K6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="PARTS_DRAWER.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
