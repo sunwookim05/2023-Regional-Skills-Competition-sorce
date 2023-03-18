@@ -30,7 +30,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-enum bool{false = 0, true};
+enum bool{false, true};
 typedef uint8_t boolean;
 typedef char *String;
 typedef uint8_t MODE;
