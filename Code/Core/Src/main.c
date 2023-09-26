@@ -374,13 +374,11 @@ MODE mainM(){
 		if(JOY_D && sel < 4) sel++;
 		if(JOY_U || JOY_D || JOY_R || JOY_L) udf = true;
 
-		date.year = 0;
 		DS3231_get_date(&date.day, &date.month, (uint8_t *)&date.year);
 		DS3231_get_time(&time.sec, &time.min, &time.hour);
-		date.year += 1992;
 
 		String bf = (String)calloc(0, sizeof(char) * 16);
-		sprintf(bf, "%04d.%02d.%02d", date.year, date.month, date.day);
+		sprintf(bf, "%04d.%02d.%02d", date.year + 1992, date.month, date.day);
 		SSD1306_PutsXY(11, 3, bf, 1);
 		sprintf(bf, "%02d:%02d:%02d", time.hour, time.min, time.sec);
 		SSD1306_PutsXY(13, 4, bf, 1);
@@ -432,46 +430,35 @@ MODE partS(){
 		uint8_t i;
 		reC = 0;
 		if(ptSetPosF){
-			if(JOY_R){
-				if(tempX < 6){
-					for(i = 1; i <= (6 - tempX); i++){
+			if(JOY_R)
+				if(tempX < 6)
+					for(i = 1; i <= (6 - tempX); i++)
 						if(led_cmp((ledPos + i), 0, 4, 0) == 3){
 							tempX += i;
 							break;
 						}
-					}
-				}
-			}
-			if(JOY_L){
-				if(tempX > 1){
-					for(i = 1; i < tempX; i++){
+			if(JOY_L)
+				if(tempX > 1)
+					for(i = 1; i < tempX; i++)
 						if(led_cmp((ledPos - i), 0, 4, 0) == 3){
 							tempX -= i;
 							break;
 						}
-					}
-				}
-			}
-			if(JOY_U){
-				if(tempY < 6){
-					for(i = 1; i <= (6 - tempY); i++){
+			if(JOY_U)
+				if(tempY < 6)
+					for(i = 1; i <= (6 - tempY); i++)
 						if(led_cmp(ledPos - (6 * i), 0, 4, 0) == 3){
 							tempY += i;
 							break;
 						}
-					}
-				}
-			}
-			if(JOY_D){
-				if(tempY > 1){
-					for(i = 1; i <=  tempY; i++){
+
+			if(JOY_D)
+				if(tempY > 1)
+					for(i = 1; i <=  tempY; i++)
 						if(led_cmp(ledPos +(6 * i), 0, 4, 0) == 3){
 							tempY -= i;
 							break;
 						}
-					}
-				}
-			}
 		}else{
 			if(JOY_R){
 				if(sel == 0){
@@ -1066,9 +1053,9 @@ MODE logD(){
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
+int main(void){
   /* USER CODE BEGIN 1 */
+	MODE (*mode[10]) = {mainM, partS, pUseM, use, refill, pFind, findR, partition, logM, logD};
 	static boolean firstOn  = false;
   /* USER CODE END 1 */
 
@@ -1130,16 +1117,8 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-		if(modeFlag == MAIN) modeFlag = mainM();
-		else if(modeFlag == PSAVE) modeFlag = partS();
-		else if(modeFlag == PUSE) modeFlag = pUseM();
-		else if(modeFlag == USE) modeFlag = use();
-		else if(modeFlag == REFILL) modeFlag = refill();
-		else if(modeFlag == PFIND) modeFlag = pFind();
-		else if(modeFlag == FINDR) modeFlag = findR();
-		else if(modeFlag == PARTITION) modeFlag = partition();
-		else if(modeFlag == PLOG) modeFlag = logM();
-		else if(modeFlag == LOGD) modeFlag = logD();
+		modeFlag = mode[modeFlag]();
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
