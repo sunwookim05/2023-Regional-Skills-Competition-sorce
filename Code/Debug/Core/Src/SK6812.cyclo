@@ -1,0 +1,4 @@
+SK6812.c:54:6:led_color	1
+SK6812.c:59:6:led_update	2
+SK6812.c:68:6:led_clear	1
+SK6812.c:72:9:led_cmp	2
