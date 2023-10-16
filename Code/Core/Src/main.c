@@ -1060,15 +1060,32 @@ MODE logD(){
 	return LOGD;
 }
 
+typedef struct func{
+	MODE (**mode)(void);
+}FUNC, *PFUNC;
+
 /* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
+int main(void){
   /* USER CODE BEGIN 1 */
+	PFUNC func = (PFUNC)malloc(sizeof(FUNC));
+	func->mode = (MODE**)malloc(sizeof(MODE*) * 10);
+
+	*(func->mode + 0) = mainM;
+	*(func->mode + 1) = partS;
+	*(func->mode + 2) = pUseM;
+	*(func->mode + 3) = use;
+	*(func->mode + 4) = refill;
+	*(func->mode + 5) = pFind;
+	*(func->mode + 6) = findR;
+	*(func->mode + 7) = partition;
+	*(func->mode + 8) = logM;
+	*(func->mode + 9) = logD;
+
 	static boolean firstOn  = false;
   /* USER CODE END 1 */
 
@@ -1130,20 +1147,13 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-		if(modeFlag == MAIN) modeFlag = mainM();
-		else if(modeFlag == PSAVE) modeFlag = partS();
-		else if(modeFlag == PUSE) modeFlag = pUseM();
-		else if(modeFlag == USE) modeFlag = use();
-		else if(modeFlag == REFILL) modeFlag = refill();
-		else if(modeFlag == PFIND) modeFlag = pFind();
-		else if(modeFlag == FINDR) modeFlag = findR();
-		else if(modeFlag == PARTITION) modeFlag = partition();
-		else if(modeFlag == PLOG) modeFlag = logM();
-		else if(modeFlag == LOGD) modeFlag = logD();
+		modeFlag = (*(func->mode + modeFlag))();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 	}
+	free(func->mode);
+	free(func);
   /* USER CODE END 3 */
 }
 
