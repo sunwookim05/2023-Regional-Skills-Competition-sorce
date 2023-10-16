@@ -1047,6 +1047,10 @@ MODE logD(){
 	return LOGD;
 }
 
+typedef struct func{
+	MODE (**mode)(void);
+}FUNC, *PFUNC;
+
 /* USER CODE END 0 */
 
 /**
@@ -1055,7 +1059,20 @@ MODE logD(){
   */
 int main(void){
   /* USER CODE BEGIN 1 */
-	MODE (*mode[10]) = {mainM, partS, pUseM, use, refill, pFind, findR, partition, logM, logD};
+	PFUNC func = (PFUNC)malloc(sizeof(FUNC));
+	func->mode = (MODE**)malloc(sizeof(MODE*) * 10);
+
+	*(func->mode + 0) = mainM;
+	*(func->mode + 1) = partS;
+	*(func->mode + 2) = pUseM;
+	*(func->mode + 3) = use;
+	*(func->mode + 4) = refill;
+	*(func->mode + 5) = pFind;
+	*(func->mode + 6) = findR;
+	*(func->mode + 7) = partition;
+	*(func->mode + 8) = logM;
+	*(func->mode + 9) = logD;
+
 	static boolean firstOn  = false;
   /* USER CODE END 1 */
 
@@ -1117,12 +1134,14 @@ int main(void){
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-		modeFlag = mode[modeFlag]();
+		modeFlag = (*(func->mode + modeFlag))();
 
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 	}
+	free(func->mode);
+	free(func);
   /* USER CODE END 3 */
 }
 
